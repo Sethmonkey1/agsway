@@ -51,6 +51,10 @@ export interface ScanResponse {
   scannedSources: Source[];
   opportunities: Opportunity[];
   notes: string[];
+  storage?: {
+    configured: boolean;
+    savedCount: number;
+  };
 }
 
 export interface IntegrationConnection {

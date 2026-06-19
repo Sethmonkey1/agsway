@@ -312,9 +312,16 @@ export default function OpportunityInbox({ initialOpportunities }: OpportunityIn
         .map((source) => `${source[0].toUpperCase()}${source.slice(1)}: ${result.opportunities.filter((item) => item.source === source).length}`)
         .join(" · ");
       const warning = result.notes.find((note) => note.startsWith("Serper could not") || note.includes("skipped"));
+      const storageWarning = result.opportunities.length > 0 && result.storage && !result.storage.configured
+        ? "Findings appeared, but Postgres is not connected—this scan was not saved"
+        : null;
+      const savedSummary = result.storage?.configured
+        ? ` · ${result.storage.savedCount} saved to cloud`
+        : "";
+      if (result.storage) setDatabaseConfigured(result.storage.configured);
       setToast(result.mode === "not_configured"
         ? result.notes[0] || "Connect an API source before scanning"
-        : warning || `Live scan complete · ${sourceSummary}`);
+        : warning || storageWarning || `Live scan complete · ${sourceSummary}${savedSummary}`);
     } catch {
       setToast("Scan could not finish—check the server log");
     } finally {
