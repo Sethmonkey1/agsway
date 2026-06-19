@@ -1,0 +1,178 @@
+:root {
+  --brand: #315f55;
+  --brand-dark: #244b43;
+  --brand-soft: #e7efeb;
+  --ink: #20231f;
+  --muted: #6f746d;
+  --line: #dfe3dc;
+  --soft-line: #eceee9;
+  --paper: #f3f4f0;
+  --white: #ffffff;
+  --sidebar: #f7f8f4;
+  --green: #2f6b58;
+  --green-soft: #e8f1ec;
+  --red: #b95d4f;
+  --red-soft: #f8ece8;
+  --blue: #55727c;
+  --blue-soft: #eaf0f1;
+  --shadow: 0 1px 2px rgba(23, 36, 29, .03), 0 14px 34px rgba(36, 50, 42, .045);
+}
+
+body {
+  background: var(--paper);
+}
+
+.sidebar {
+  background: var(--sidebar);
+}
+
+.topbar {
+  background: rgba(250, 251, 248, .92);
+}
+
+.primary-nav button.active,
+.utility-nav button.active {
+  color: var(--brand-dark);
+  background: var(--brand-soft);
+}
+
+.nav-count,
+.source-count {
+  color: var(--brand-dark);
+  background: #dce8e3;
+}
+
+.monitor-card {
+  background: linear-gradient(145deg, #f8faf7, #eef3ef);
+  border-color: #d8e0da;
+}
+
+.monitor-card p {
+  color: #6b746d;
+}
+
+.monitor-card button,
+.filter-tabs button.active,
+.original-link,
+.analysis-head > span {
+  color: var(--brand);
+}
+
+.scan-button {
+  box-shadow: 0 8px 20px rgba(49, 95, 85, .2);
+}
+
+.filter-tabs button.active span {
+  color: var(--brand-dark);
+  background: var(--brand-soft);
+}
+
+.search-field:focus-within,
+.tag-editor-input:focus-within,
+.secret-input-wrap:focus-within {
+  border-color: #7fa497;
+  box-shadow: 0 0 0 3px rgba(49, 95, 85, .1);
+}
+
+.opportunity-card.selected {
+  background: #f5f8f5;
+}
+
+.source-reddit {
+  color: #a95640;
+  background: #f8eee9;
+}
+
+.source-quora {
+  color: #8d504a;
+  background: #f6eceb;
+}
+
+.source-youtube {
+  color: #aa514d;
+  background: #f8eceb;
+}
+
+.score-strong {
+  color: #4f6e65;
+}
+
+.score-pill.score-strong {
+  background: #edf3f0;
+  border-color: #cbdad4;
+}
+
+.audience-club {
+  color: #446b61;
+  background: #e8f0ec;
+}
+
+.audience-brand {
+  color: #55727c;
+  background: #eaf0f1;
+}
+
+.analysis-card {
+  background: linear-gradient(140deg, #f8faf7, #f1f5f2);
+  border-color: #dce6df;
+}
+
+.analysis-card p {
+  color: #606a63;
+}
+
+.draft-section textarea:focus {
+  box-shadow: inset 0 0 0 2px rgba(49, 95, 85, .14);
+}
+
+.toast {
+  background: #28312d;
+  border-color: #3b4741;
+  box-shadow: 0 16px 40px rgba(23, 31, 27, .2);
+}
+
+.save-monitor-button,
+.monitor-save-bar button,
+.save-integrations-button {
+  box-shadow: 0 5px 14px rgba(49, 95, 85, .16);
+}
+
+.source-setting-card.enabled {
+  border-color: #ccdcd4;
+  background: #f8faf8;
+}
+
+.source-switch[aria-checked="true"] {
+  background: var(--brand);
+}
+
+.editable-tag {
+  border-color: #dce2dc;
+  color: #4c554f;
+}
+
+.score-control output {
+  color: var(--brand-dark);
+  background: var(--brand-soft);
+}
+
+.monitor-save-bar {
+  border-color: #d5ded7;
+  box-shadow: 0 12px 35px rgba(34, 48, 40, .1);
+}
+
+.integration-logo-serper,
+.settings-section-icon,
+.sparkle-tile {
+  color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.integration-next-step {
+  border-color: #d7e2db;
+  background: #f5f8f6;
+}
+
+.integration-next-step svg {
+  color: var(--brand);
+}

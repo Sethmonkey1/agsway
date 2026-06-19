@@ -1,0 +1,236 @@
+"use client";
+
+import {
+  CheckCircle2,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  KeyRound,
+  LoaderCircle,
+  LockKeyhole,
+  MessageCircle,
+  Save,
+  ShieldCheck,
+  Trash2,
+  Video,
+} from "lucide-react";
+import { useState } from "react";
+import type { IntegrationStatus } from "@/lib/types";
+
+interface IntegrationSettingsPanelProps {
+  status: IntegrationStatus | null;
+  isLoading: boolean;
+  onStatusChange: (status: IntegrationStatus) => void;
+  onToast: (message: string) => void;
+}
+
+type IntegrationName = "serper" | "youtube";
+
+const integrations = {
+  serper: {
+    name: "Serper",
+    eyebrow: "Reddit + Quora discovery",
+    description: "Searches recent Google results for relevant Reddit posts and evergreen Quora questions.",
+    env: "SERPER_API_KEY",
+    placeholder: "Paste your Serper API key",
+    helpUrl: "https://serper.dev/api-key",
+    icon: MessageCircle,
+  },
+  youtube: {
+    name: "YouTube Data API",
+    eyebrow: "YouTube comment monitoring",
+    description: "Finds recent videos and surfaces high-intent questions from their comment sections.",
+    env: "YOUTUBE_API_KEY",
+    placeholder: "Paste your YouTube API key",
+    helpUrl: "https://console.cloud.google.com/apis/credentials",
+    icon: Video,
+  },
+} as const;
+
+export default function IntegrationSettingsPanel({
+  status,
+  isLoading,
+  onStatusChange,
+  onToast,
+}: IntegrationSettingsPanelProps) {
+  const [values, setValues] = useState<Record<IntegrationName, string>>({ serper: "", youtube: "" });
+  const [visible, setVisible] = useState<Record<IntegrationName, boolean>>({ serper: false, youtube: false });
+  const [isSaving, setIsSaving] = useState(false);
+  const [confirming, setConfirming] = useState<IntegrationName | null>(null);
+  const hasChanges = Boolean(values.serper.trim() || values.youtube.trim());
+
+  async function postIntegrations(payload: Record<string, unknown>) {
+    const response = await fetch("/api/integrations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Could not update integrations.");
+    return result as IntegrationStatus;
+  }
+
+  async function save() {
+    if (!hasChanges) return;
+    setIsSaving(true);
+    try {
+      const next = await postIntegrations({
+        ...(values.serper.trim() ? { serper: values.serper } : {}),
+        ...(values.youtube.trim() ? { youtube: values.youtube } : {}),
+      });
+      setValues({ serper: "", youtube: "" });
+      setVisible({ serper: false, youtube: false });
+      onStatusChange(next);
+      onToast("API connections saved securely");
+    } catch (error) {
+      onToast(error instanceof Error ? error.message : "Could not save API connections");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function disconnect(name: IntegrationName) {
+    if (confirming !== name) {
+      setConfirming(name);
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const next = await postIntegrations({ clear: [name] });
+      onStatusChange(next);
+      setConfirming(null);
+      onToast(`${integrations[name].name} disconnected`);
+    } catch (error) {
+      onToast(error instanceof Error ? error.message : "Could not disconnect integration");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <div className="integration-settings-page">
+      <section className="page-heading integration-page-heading">
+        <div>
+          <div className="eyebrow"><span /> Workspace settings</div>
+          <h1>Connect Swaya&apos;s sources.</h1>
+          <p>Add each API key once. After saving, the app only shows a masked connection status.</p>
+        </div>
+        <button
+          type="button"
+          className="save-integrations-button"
+          onClick={save}
+          disabled={!hasChanges || isSaving || !status?.writable}
+        >
+          {isSaving ? <LoaderCircle size={15} className="spinning" /> : <Save size={15} />}
+          {isSaving ? "Saving…" : "Save connections"}
+        </button>
+      </section>
+
+      <section className="secret-safety-banner">
+        <span><ShieldCheck size={19} /></span>
+        <div>
+          <strong>Keys stay server-side.</strong>
+          <p>They are written to the git-ignored <code>.env.local</code> file and are never returned to the browser or saved in localStorage.</p>
+        </div>
+        <span className="local-only-pill"><LockKeyhole size={12} /> Local workspace</span>
+      </section>
+
+      {!isLoading && status && !status.writable && (
+        <section className="deployment-secret-note">
+          This screen is read-only outside the local app. Deployed environments should use encrypted hosting secrets.
+        </section>
+      )}
+
+      <section className="integration-card-list" aria-label="API integrations">
+        {(Object.keys(integrations) as IntegrationName[]).map((name) => {
+          const integration = integrations[name];
+          const connection = status?.[name];
+          const Icon = integration.icon;
+          const configured = connection?.configured ?? false;
+          return (
+            <article className="integration-card" key={name}>
+              <div className="integration-card-main">
+                <span className={`integration-logo integration-logo-${name}`}><Icon size={21} /></span>
+                <div className="integration-copy">
+                  <div className="integration-title-row">
+                    <div>
+                      <span>{integration.eyebrow}</span>
+                      <h2>{integration.name}</h2>
+                    </div>
+                    {isLoading ? (
+                      <span className="connection-status checking"><LoaderCircle size={13} className="spinning" /> Checking</span>
+                    ) : configured ? (
+                      <span className="connection-status connected"><CheckCircle2 size={13} /> Connected</span>
+                    ) : (
+                      <span className="connection-status">Not connected</span>
+                    )}
+                  </div>
+                  <p>{integration.description}</p>
+                </div>
+              </div>
+
+              <div className="integration-form-area">
+                <div className="integration-field-label">
+                  <label htmlFor={`${name}-api-key`}>API key</label>
+                  <code>{integration.env}</code>
+                </div>
+                <div className="secret-input-row">
+                  <div className="secret-input-wrap">
+                    <KeyRound size={15} />
+                    <input
+                      id={`${name}-api-key`}
+                      aria-label={`${integration.name} key`}
+                      type={visible[name] ? "text" : "password"}
+                      value={values[name]}
+                      onChange={(event) => setValues((current) => ({ ...current, [name]: event.target.value }))}
+                      placeholder={configured ? `${connection?.masked} — paste to replace` : integration.placeholder}
+                      autoComplete="off"
+                      spellCheck={false}
+                      disabled={!status?.writable || isSaving}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setVisible((current) => ({ ...current, [name]: !current[name] }))}
+                      aria-label={`${visible[name] ? "Hide" : "Show"} ${integration.name} key`}
+                      disabled={!values[name]}
+                    >
+                      {visible[name] ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                  <a href={integration.helpUrl} target="_blank" rel="noreferrer">
+                    Get key <ExternalLink size={12} />
+                  </a>
+                </div>
+
+                <div className="integration-card-footer">
+                  <span>
+                    {configured
+                      ? `Saved as ${connection?.masked}. Leave blank to keep the current key.`
+                      : "Nothing is sent until you choose Save connections."}
+                  </span>
+                  {configured && (
+                    <button
+                      type="button"
+                      className={confirming === name ? "confirm-disconnect" : "disconnect-button"}
+                      onClick={() => disconnect(name)}
+                      onBlur={() => setConfirming((current) => current === name ? null : current)}
+                      disabled={isSaving || !status?.writable}
+                      aria-label={confirming === name ? `Confirm disconnect ${integration.name}` : `Disconnect ${integration.name}`}
+                    >
+                      <Trash2 size={13} />
+                      {confirming === name ? "Confirm disconnect" : "Disconnect"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </section>
+
+      <section className="integration-next-step">
+        <div><CheckCircle2 size={18} /><span><strong>After connecting:</strong> open Monitors and choose “Save &amp; run test scan” to verify live results.</span></div>
+      </section>
+    </div>
+  );
+}
