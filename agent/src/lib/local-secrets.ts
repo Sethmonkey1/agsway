@@ -3,6 +3,11 @@ import "server-only";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { IntegrationStatus } from "./types";
+import {
+  canManageHostedSecrets,
+  loadHostedIntegrationSecrets,
+  updateHostedIntegrationSecrets,
+} from "./storage";
 
 const ENV_FILE = path.join(process.cwd(), ".env.local");
 
@@ -63,13 +68,16 @@ function maskSecret(value: string | undefined) {
 export async function getIntegrationStatus(request: Request): Promise<IntegrationStatus> {
   const content = await readEnvFile();
   const fileValues = parseManagedValues(content);
-  const serper = process.env.SERPER_API_KEY || fileValues.get("SERPER_API_KEY");
-  const youtube = process.env.YOUTUBE_API_KEY || fileValues.get("YOUTUBE_API_KEY");
-  const writable = canManageLocalSecrets(request);
+  const local = canManageLocalSecrets(request);
+  const hostedValues = local ? {} : await loadHostedIntegrationSecrets();
+  const serper = hostedValues.serper || process.env.SERPER_API_KEY || fileValues.get("SERPER_API_KEY");
+  const youtube = hostedValues.youtube || process.env.YOUTUBE_API_KEY || fileValues.get("YOUTUBE_API_KEY");
+  const hostedWritable = !local && canManageHostedSecrets();
 
   return {
-    localOnly: true,
-    writable,
+    localOnly: local,
+    writable: local || hostedWritable,
+    requiresUnlock: hostedWritable,
     serper: { configured: Boolean(serper), masked: maskSecret(serper) },
     youtube: { configured: Boolean(youtube), masked: maskSecret(youtube) },
   };
@@ -83,6 +91,23 @@ function validateSecret(value: unknown) {
     throw new Error("API keys must be a single line under 500 characters.");
   }
   return trimmed;
+}
+
+export async function updateHostedIntegrations(
+  request: Request,
+  updates: { serper?: unknown; youtube?: unknown; clear?: unknown },
+) {
+  if (canManageLocalSecrets(request)) {
+    throw new Error("Hosted integration storage is not used by the local app.");
+  }
+  const clear = Array.isArray(updates.clear)
+    ? updates.clear.filter((item): item is IntegrationName => item === "serper" || item === "youtube")
+    : [];
+  await updateHostedIntegrationSecrets({
+    serper: validateSecret(updates.serper),
+    youtube: validateSecret(updates.youtube),
+  }, clear);
+  return getIntegrationStatus(request);
 }
 
 export async function updateLocalIntegrations(

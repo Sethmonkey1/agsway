@@ -2,6 +2,7 @@ import { defaultMonitorSettings, normalizeMonitorSettings } from "./config";
 import { candidateToOpportunity } from "./scoring";
 import { searchWithSerper } from "./sources/serper";
 import { findYouTubeQuestions } from "./sources/youtube";
+import { loadHostedIntegrationSecrets } from "./storage";
 import type { MonitorSettings, ScanResponse, Source, SourceCandidate } from "./types";
 
 function uniqueCandidates(candidates: SourceCandidate[]) {
@@ -64,8 +65,9 @@ async function runSerperQueries(
 
 export async function runMonitor(input?: MonitorSettings): Promise<ScanResponse> {
   const settings = input ? normalizeMonitorSettings(input) : defaultMonitorSettings;
-  const serperKey = process.env.SERPER_API_KEY;
-  const youtubeKey = process.env.YOUTUBE_API_KEY;
+  const hostedKeys = await loadHostedIntegrationSecrets();
+  const serperKey = hostedKeys.serper || process.env.SERPER_API_KEY;
+  const youtubeKey = hostedKeys.youtube || process.env.YOUTUBE_API_KEY;
   const scannedSources: Source[] = [];
   const notes: string[] = [];
   const candidates: SourceCandidate[] = [];

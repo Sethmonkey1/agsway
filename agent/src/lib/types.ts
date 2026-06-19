@@ -61,6 +61,7 @@ export interface IntegrationConnection {
 export interface IntegrationStatus {
   localOnly: boolean;
   writable: boolean;
+  requiresUnlock: boolean;
   serper: IntegrationConnection;
   youtube: IntegrationConnection;
 }

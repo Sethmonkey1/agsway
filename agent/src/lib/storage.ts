@@ -1,4 +1,5 @@
 import postgres from "postgres";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { defaultMonitorSettings, normalizeMonitorSettings } from "./config";
 import type { MonitorSettings, Opportunity, OpportunityStatus, Source, Audience } from "./types";
 
@@ -78,6 +79,13 @@ async function ensureSchema() {
       `;
       await sql`create index if not exists swaya_opportunities_posted_at_idx on swaya_opportunities (posted_at desc)`;
       await sql`create index if not exists swaya_opportunities_status_idx on swaya_opportunities (status)`;
+      await sql`
+        create table if not exists swaya_integration_secrets (
+          name text primary key,
+          encrypted_value text not null,
+          updated_at timestamptz not null default now()
+        )
+      `;
     })().catch((error) => {
       schemaReady = null;
       throw error;
@@ -204,4 +212,72 @@ export async function updateStoredOpportunity(
     await sql`update swaya_opportunities set draft = ${update.draft}, updated_at = now() where id = ${id}`;
   }
   return true;
+}
+
+type HostedIntegrationName = "serper" | "youtube";
+type HostedIntegrationSecrets = Partial<Record<HostedIntegrationName, string>>;
+
+function encryptionKey() {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) throw new Error("CRON_SECRET is required for hosted key management.");
+  return createHash("sha256").update(secret).digest();
+}
+
+function encryptSecret(value: string) {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", encryptionKey(), iv);
+  const encrypted = Buffer.concat([cipher.update(value, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return [iv, tag, encrypted].map((part) => part.toString("base64url")).join(".");
+}
+
+function decryptSecret(value: string) {
+  const [ivValue, tagValue, encryptedValue] = value.split(".");
+  if (!ivValue || !tagValue || !encryptedValue) throw new Error("Stored integration key is invalid.");
+  const decipher = createDecipheriv("aes-256-gcm", encryptionKey(), Buffer.from(ivValue, "base64url"));
+  decipher.setAuthTag(Buffer.from(tagValue, "base64url"));
+  return Buffer.concat([
+    decipher.update(Buffer.from(encryptedValue, "base64url")),
+    decipher.final(),
+  ]).toString("utf8");
+}
+
+export function canManageHostedSecrets() {
+  return isDatabaseConfigured() && Boolean(process.env.CRON_SECRET);
+}
+
+export async function loadHostedIntegrationSecrets(): Promise<HostedIntegrationSecrets> {
+  if (!canManageHostedSecrets()) return {};
+  await ensureSchema();
+  const rows = await getClient()<{ name: HostedIntegrationName; encrypted_value: string }[]>`
+    select name, encrypted_value from swaya_integration_secrets where name in ('serper', 'youtube')
+  `;
+  const result: HostedIntegrationSecrets = {};
+  for (const row of rows) result[row.name] = decryptSecret(row.encrypted_value);
+  return result;
+}
+
+export async function updateHostedIntegrationSecrets(
+  updates: HostedIntegrationSecrets,
+  clear: HostedIntegrationName[] = [],
+) {
+  if (!canManageHostedSecrets()) {
+    throw new Error("Connect Postgres and configure CRON_SECRET before editing hosted keys.");
+  }
+  await ensureSchema();
+  const sql = getClient();
+  await sql.begin(async (transaction) => {
+    for (const name of clear) {
+      await transaction`delete from swaya_integration_secrets where name = ${name}`;
+    }
+    for (const name of ["serper", "youtube"] as HostedIntegrationName[]) {
+      const value = updates[name];
+      if (!value) continue;
+      await transaction`
+        insert into swaya_integration_secrets (name, encrypted_value, updated_at)
+        values (${name}, ${encryptSecret(value)}, now())
+        on conflict (name) do update set encrypted_value = excluded.encrypted_value, updated_at = now()
+      `;
+    }
+  });
 }
