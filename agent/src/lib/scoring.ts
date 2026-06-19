@@ -9,6 +9,9 @@ const clubSignals = [
   "our college",
   "our school",
   "funding",
+  "donation",
+  "grant",
+  "budget",
   "sponsor",
   "event",
 ];
@@ -16,6 +19,10 @@ const clubSignals = [
 const brandSignals = [
   "our brand",
   "marketing",
+  "campus marketing",
+  "college marketing",
+  "reach college students",
+  "partnership",
   "campus activation",
   "ambassador",
   "product sampling",
@@ -31,6 +38,9 @@ const highIntentSignals = [
   "who should",
   "looking for",
   "need sponsors",
+  "need funding",
+  "need money",
+  "where can",
   "send products",
   "small budget",
   "proposal",
@@ -56,12 +66,19 @@ function clean(value: string) {
 
 export function classifyCandidate(candidate: SourceCandidate) {
   const text = `${candidate.title} ${candidate.excerpt}`.toLowerCase();
+  const community = candidate.community.toLowerCase();
+  const broadRedditCommunities = ["r/marketing", "r/advertising", "r/entrepreneur", "r/startups", "r/smallbusiness"];
+  const focusedCommunityBonus = candidate.source === "reddit"
+    && community.startsWith("r/")
+    && !broadRedditCommunities.includes(community)
+    ? 6
+    : 0;
   const clubScore = signalCount(text, clubSignals);
   const brandScore = signalCount(text, brandSignals);
   const highIntent = signalCount(text, highIntentSignals);
   const questionBonus = text.includes("?") ? 8 : 0;
   const audience: Audience = brandScore > clubScore ? "brand" : "club";
-  const score = Math.min(98, 54 + Math.max(clubScore, brandScore) * 6 + highIntent * 5 + questionBonus);
+  const score = Math.min(98, 54 + focusedCommunityBonus + Math.max(clubScore, brandScore) * 6 + highIntent * 5 + questionBonus);
 
   return {
     audience,

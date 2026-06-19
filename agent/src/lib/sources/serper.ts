@@ -27,7 +27,9 @@ export async function searchWithSerper(
       q: query,
       num: 10,
       tbs:
-        lookbackDays <= 1
+        source === "quora"
+          ? "qdr:y"
+          : lookbackDays <= 1
           ? "qdr:d"
           : lookbackDays <= 7
             ? "qdr:w"

@@ -11,17 +11,25 @@ function uniqueCandidates(candidates: SourceCandidate[]) {
 
 const campusSignals = [
   "college", "university", "campus", "student organization", "student org", "student club",
-  "fraternity", "sorority", "chapter", "r/frat", "r/sororities", "college students",
+  "student group", "school club", "fraternity", "sorority", "chapter", "greek life",
+  "r/frat", "r/sororities", "college students",
 ];
 
 const partnershipSignals = [
   "sponsor", "sponsorship", "funding", "fundraiser", "fundraising", "brand partnership",
-  "free products", "product sampling", "campus activation", "student ambassador",
+  "partnership", "donation", "donate", "grant", "budget", "financial support", "free products",
+  "product sampling", "campus activation", "campus marketing", "college marketing",
+  "reach college students", "market to college", "student ambassador",
 ];
 
-function isSwayaRelevant(candidate: SourceCandidate) {
+function isSwayaRelevant(candidate: SourceCandidate, settings: MonitorSettings) {
   const text = `${candidate.community} ${candidate.title} ${candidate.excerpt}`.toLowerCase();
-  return campusSignals.some((signal) => text.includes(signal))
+  const community = candidate.community.replace(/^r\//i, "").toLowerCase();
+  const broadCommunities = new Set(["marketing", "advertising", "entrepreneur", "startups", "smallbusiness"]);
+  const configuredCampusCommunity = settings.subreddits
+    .map((item) => item.replace(/^r\//i, "").toLowerCase())
+    .includes(community) && !broadCommunities.has(community);
+  return (configuredCampusCommunity || campusSignals.some((signal) => text.includes(signal)))
     && partnershipSignals.some((signal) => text.includes(signal));
 }
 
@@ -48,26 +56,16 @@ function redditQueries(settings: MonitorSettings) {
   const communities = settings.subreddits
     .map((subreddit) => subreddit.replace(/^r\//i, "").replace(/[^a-z0-9_]/gi, ""))
     .filter(Boolean)
-    .slice(0, 9);
-  const clubTopics = topicClause(settings.clubKeywords, ["sponsor", "sponsorship", "funding", "club", "student"]);
-  const brandTopics = topicClause(settings.brandKeywords, ["campus", "marketing", "ambassador", "college", "sampling"]);
-  const communityQueries: string[] = [];
+    .slice(0, 8);
+  const clubTopics = topicClause(settings.clubKeywords, ["sponsor", "funding", "fundraiser", "donation"]);
+  const brandTopics = topicClause(settings.brandKeywords, ["campus", "college", "sampling", "ambassador"]);
+  const brandCommunities = new Set(["marketing", "advertising"]);
+  const intentClause = "sponsor OR sponsorship OR funding OR fundraiser OR donation OR grant OR budget OR partnership";
 
-  for (let index = 0; index < communities.length; index += 3) {
-    const sites = communities
-      .slice(index, index + 3)
-      .map((community) => `site:reddit.com/r/${community}/comments`)
-      .join(" OR ");
-    communityQueries.push(`(${sites}) (${clubTopics})`);
-  }
-
-  const allCommunitySites = communities
-    .map((community) => `site:reddit.com/r/${community}/comments`)
-    .join(" OR ");
-  return [
-    ...communityQueries.slice(0, 3),
-    allCommunitySites ? `(${allCommunitySites}) (${brandTopics})` : `site:reddit.com/comments (${brandTopics})`,
-  ];
+  return communities.map((community) => {
+    const contextualTopics = brandCommunities.has(community.toLowerCase()) ? brandTopics : clubTopics;
+    return `site:reddit.com/r/${community}/comments (${intentClause}) (${contextualTopics})`;
+  });
 }
 
 async function runSerperQueries(
@@ -141,7 +139,7 @@ export async function runMonitor(input?: MonitorSettings): Promise<ScanResponse>
       const quoraSearch = await runSerperQueries(
         settings.quoraQueries
           .slice(0, 5)
-          .map((query) => query.startsWith("site:quora.com") ? query : `site:quora.com "${query}"`),
+          .map((query) => query.startsWith("site:quora.com") ? query : `site:quora.com ${query}`),
         "quora",
         serperKey,
         settings.lookbackDays,
@@ -169,7 +167,7 @@ export async function runMonitor(input?: MonitorSettings): Promise<ScanResponse>
 
   const opportunities = uniqueCandidates(candidates)
     .filter((candidate) => isWithinLookback(candidate, settings.lookbackDays))
-    .filter((candidate) => candidate.source !== "reddit" || isSwayaRelevant(candidate))
+    .filter((candidate) => candidate.source !== "reddit" || isSwayaRelevant(candidate, settings))
     .map(candidateToOpportunity)
     .filter((opportunity) => opportunity.score >= settings.minScore)
     .sort((a, b) => b.score - a.score)

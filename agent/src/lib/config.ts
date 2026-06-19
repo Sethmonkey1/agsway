@@ -67,7 +67,7 @@ export const defaultMonitorSettings: MonitorSettings = {
   brandKeywords: [...brandQueries],
   quoraQueries: [...quoraQueries],
   youtubeQueries: [...youtubeQueries],
-  minScore: 75,
+  minScore: 70,
   lookbackDays: 30,
   scanCadenceHours: 24,
 };
