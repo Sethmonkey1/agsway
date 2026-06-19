@@ -9,6 +9,29 @@ function uniqueCandidates(candidates: SourceCandidate[]) {
   return Array.from(new Map(candidates.map((candidate) => [candidate.url, candidate])).values());
 }
 
+const campusSignals = [
+  "college", "university", "campus", "student organization", "student org", "student club",
+  "fraternity", "sorority", "chapter", "r/frat", "r/sororities", "college students",
+];
+
+const partnershipSignals = [
+  "sponsor", "sponsorship", "funding", "fundraiser", "fundraising", "brand partnership",
+  "free products", "product sampling", "campus activation", "student ambassador",
+];
+
+function isSwayaRelevant(candidate: SourceCandidate) {
+  const text = `${candidate.community} ${candidate.title} ${candidate.excerpt}`.toLowerCase();
+  return campusSignals.some((signal) => text.includes(signal))
+    && partnershipSignals.some((signal) => text.includes(signal));
+}
+
+function isWithinLookback(candidate: SourceCandidate, lookbackDays: number) {
+  if (candidate.source !== "reddit" || !candidate.postedAt) return true;
+  const postedAt = new Date(candidate.postedAt).getTime();
+  if (!Number.isFinite(postedAt)) return true;
+  return postedAt >= Date.now() - lookbackDays * 24 * 60 * 60 * 1000;
+}
+
 const searchStopWords = new Set([
   "a", "and", "are", "brands", "for", "get", "how", "i", "ideas", "of", "our", "that", "the", "to", "what",
 ]);
@@ -38,7 +61,13 @@ function redditQueries(settings: MonitorSettings) {
     communityQueries.push(`(${sites}) (${clubTopics})`);
   }
 
-  return [...communityQueries.slice(0, 3), `site:reddit.com/comments (${brandTopics})`];
+  const allCommunitySites = communities
+    .map((community) => `site:reddit.com/r/${community}/comments`)
+    .join(" OR ");
+  return [
+    ...communityQueries.slice(0, 3),
+    allCommunitySites ? `(${allCommunitySites}) (${brandTopics})` : `site:reddit.com/comments (${brandTopics})`,
+  ];
 }
 
 async function runSerperQueries(
@@ -139,6 +168,8 @@ export async function runMonitor(input?: MonitorSettings): Promise<ScanResponse>
   }
 
   const opportunities = uniqueCandidates(candidates)
+    .filter((candidate) => isWithinLookback(candidate, settings.lookbackDays))
+    .filter((candidate) => candidate.source !== "reddit" || isSwayaRelevant(candidate))
     .map(candidateToOpportunity)
     .filter((opportunity) => opportunity.score >= settings.minScore)
     .sort((a, b) => b.score - a.score)

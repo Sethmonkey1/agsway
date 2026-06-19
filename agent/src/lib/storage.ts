@@ -196,6 +196,17 @@ export async function saveOpportunities(opportunities: Opportunity[]) {
   return true;
 }
 
+export async function pruneExpiredRedditOpportunities(lookbackDays: number) {
+  if (!isDatabaseConfigured()) return false;
+  await ensureSchema();
+  const cutoff = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000).toISOString();
+  await getClient()`
+    delete from swaya_opportunities
+    where source = 'reddit' and status = 'new' and posted_at < ${cutoff}
+  `;
+  return true;
+}
+
 export async function updateStoredOpportunity(
   id: string,
   update: { status?: OpportunityStatus; draft?: string },

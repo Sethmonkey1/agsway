@@ -26,15 +26,12 @@ export async function searchWithSerper(
     body: JSON.stringify({
       q: query,
       num: 10,
-      // Reddit pages can reach Google's index later than Quora pages.
       tbs:
-        source === "reddit"
-          ? "qdr:y"
-          : lookbackDays <= 1
-            ? "qdr:d"
-            : lookbackDays <= 7
-              ? "qdr:w"
-              : "qdr:m",
+        lookbackDays <= 1
+          ? "qdr:d"
+          : lookbackDays <= 7
+            ? "qdr:w"
+            : "qdr:m",
     }),
     cache: "no-store",
   });

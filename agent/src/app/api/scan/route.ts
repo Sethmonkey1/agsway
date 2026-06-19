@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { runMonitor } from "@/lib/monitor";
 import { normalizeMonitorSettings } from "@/lib/config";
-import { saveMonitorSettings, saveOpportunities } from "@/lib/storage";
+import { pruneExpiredRedditOpportunities, saveMonitorSettings, saveOpportunities } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +13,7 @@ export async function POST(request: Request) {
     await Promise.all([
       saveMonitorSettings(settings),
       saveOpportunities(result.opportunities),
+      pruneExpiredRedditOpportunities(settings.lookbackDays),
     ]);
     return NextResponse.json(result);
   } catch (error) {
