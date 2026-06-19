@@ -3,6 +3,7 @@ import "./globals.css";
 import "./monitor-settings.css";
 import "./integration-settings.css";
 import "./theme.css";
+import "./save-finding.css";
 
 export const metadata: Metadata = {
   title: "Swaya Opportunity Agent",

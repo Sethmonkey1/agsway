@@ -225,7 +225,11 @@ export default function OpportunityInbox({ initialOpportunities }: OpportunityIn
   }
 
   async function persistOpportunity(id: string, update: { status?: OpportunityStatus; draft?: string }) {
-    if (!databaseConfigured) return;
+    if (!databaseConfigured) {
+      if (integrationStatus?.localOnly) return true;
+      setToast("Cloud storage is not connected—this finding could not be saved");
+      return false;
+    }
     try {
       const response = await fetch(`/api/opportunities/${encodeURIComponent(id)}`, {
         method: "PATCH",
@@ -234,15 +238,19 @@ export default function OpportunityInbox({ initialOpportunities }: OpportunityIn
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not save opportunity");
+      if (!result.saved) throw new Error("Neon did not confirm the save");
+      return true;
     } catch (error) {
       setToast(error instanceof Error ? error.message : "Could not save opportunity");
+      return false;
     }
   }
 
-  function setStatus(status: OpportunityStatus) {
+  async function setStatus(status: OpportunityStatus) {
     if (!selected) return;
+    const persisted = await persistOpportunity(selected.id, { status });
+    if (!persisted) return;
     updateOpportunity(selected.id, { status });
-    void persistOpportunity(selected.id, { status });
     if (status === "dismissed") {
       const next = filtered.find((item) => item.id !== selected.id);
       if (next) setSelectedId(next.id);
@@ -577,8 +585,14 @@ export default function OpportunityInbox({ initialOpportunities }: OpportunityIn
                       {sourceMeta[selected.source].label}
                     </span>
                     <div>
-                      <button type="button" className="icon-button" onClick={() => setStatus("saved")} aria-label="Save">
+                      <button
+                        type="button"
+                        className={`save-finding-button ${selected.status === "saved" ? "active" : ""}`}
+                        onClick={() => void setStatus("saved")}
+                        aria-label={selected.status === "saved" ? "Finding saved" : "Save finding"}
+                      >
                         <Bookmark size={17} fill={selected.status === "saved" ? "currentColor" : "none"} />
+                        {selected.status === "saved" ? "Saved" : "Save finding"}
                       </button>
                     </div>
                   </div>
@@ -643,10 +657,10 @@ export default function OpportunityInbox({ initialOpportunities }: OpportunityIn
                   </div>
 
                   <div className="detail-footer">
-                    <button type="button" className="dismiss-button" onClick={() => setStatus("dismissed")}>
+                    <button type="button" className="dismiss-button" onClick={() => void setStatus("dismissed")}>
                       <Archive size={15} /> Dismiss
                     </button>
-                    <button type="button" className="replied-button" onClick={() => setStatus("replied")}>
+                    <button type="button" className="replied-button" onClick={() => void setStatus("replied")}>
                       <CheckCircle2 size={15} /> Mark as replied
                     </button>
                   </div>
