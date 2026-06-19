@@ -1,0 +1,6 @@
+agent/node_modules/
+agent/.next/
+agent/.env*
+!agent/.env.example
+*.log
+.DS_Store
