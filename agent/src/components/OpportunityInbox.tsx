@@ -47,6 +47,13 @@ interface OpportunityInboxProps {
   initialOpportunities: Opportunity[];
 }
 
+interface StoredStateResponse {
+  databaseConfigured: boolean;
+  opportunities: Opportunity[];
+  settings: MonitorSettings;
+  error?: string;
+}
+
 const sourceMeta: Record<Source, { label: string; className: string }> = {
   reddit: { label: "Reddit", className: "source-reddit" },
   quora: { label: "Quora", className: "source-quora" },
@@ -106,34 +113,60 @@ export default function OpportunityInbox({ initialOpportunities }: OpportunityIn
   const [monitorSettingsDirty, setMonitorSettingsDirty] = useState(false);
   const [integrationStatus, setIntegrationStatus] = useState<IntegrationStatus | null>(null);
   const [integrationStatusLoading, setIntegrationStatusLoading] = useState(true);
+  const [databaseConfigured, setDatabaseConfigured] = useState<boolean | null>(null);
 
   useEffect(() => {
-    try {
-      window.localStorage.removeItem(LEGACY_DEMO_STORAGE_KEY);
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      if (!stored) return;
-      const saved = (JSON.parse(stored) as Opportunity[]).map(repairStoredOpportunity);
-      const savedById = new Map(saved.map((item) => [item.id, item]));
-      const merged = initialOpportunities.map((item) => savedById.get(item.id) ?? item);
-      const scanned = saved.filter((item) => !initialOpportunities.some((seed) => seed.id === item.id));
-      setOpportunities([...scanned, ...merged]);
-    } catch {
-      // Invalid local state should never block the inbox.
+    let active = true;
+
+    function loadLocalFallback() {
+      try {
+        window.localStorage.removeItem(LEGACY_DEMO_STORAGE_KEY);
+        const storedOpportunities = window.localStorage.getItem(STORAGE_KEY);
+        if (storedOpportunities) {
+          const saved = (JSON.parse(storedOpportunities) as Opportunity[]).map(repairStoredOpportunity);
+          setOpportunities(saved);
+          setSelectedId(saved[0]?.id ?? "");
+        }
+        const storedSettings = window.localStorage.getItem(MONITOR_SETTINGS_KEY);
+        if (storedSettings) setMonitorSettings(normalizeMonitorSettings(JSON.parse(storedSettings)));
+      } catch {
+        // Invalid local state should never block the inbox.
+      }
     }
+
+    fetch("/api/state", { cache: "no-store" })
+      .then(async (response) => {
+        const result = await response.json() as StoredStateResponse;
+        if (!response.ok) throw new Error(result.error || "Could not load stored data");
+        return result;
+      })
+      .then((result) => {
+        if (!active) return;
+        setDatabaseConfigured(result.databaseConfigured);
+        if (result.databaseConfigured) {
+          const stored = result.opportunities.map(repairStoredOpportunity);
+          setOpportunities(stored);
+          setSelectedId(stored[0]?.id ?? "");
+          setMonitorSettings(normalizeMonitorSettings(result.settings));
+        } else {
+          loadLocalFallback();
+        }
+      })
+      .catch((error) => {
+        if (!active) return;
+        setDatabaseConfigured(false);
+        loadLocalFallback();
+        setToast(error instanceof Error ? error.message : "Using local browser storage");
+      });
+
+    return () => { active = false; };
   }, [initialOpportunities]);
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(opportunities));
-  }, [opportunities]);
-
-  useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(MONITOR_SETTINGS_KEY);
-      if (stored) setMonitorSettings(normalizeMonitorSettings(JSON.parse(stored)));
-    } catch {
-      // Fall back to Swaya's recommended monitor defaults.
+    if (databaseConfigured === false) {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(opportunities));
     }
-  }, []);
+  }, [databaseConfigured, opportunities]);
 
   useEffect(() => {
     let active = true;
@@ -191,9 +224,25 @@ export default function OpportunityInbox({ initialOpportunities }: OpportunityIn
     );
   }
 
+  async function persistOpportunity(id: string, update: { status?: OpportunityStatus; draft?: string }) {
+    if (!databaseConfigured) return;
+    try {
+      const response = await fetch(`/api/opportunities/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(update),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not save opportunity");
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : "Could not save opportunity");
+    }
+  }
+
   function setStatus(status: OpportunityStatus) {
     if (!selected) return;
     updateOpportunity(selected.id, { status });
+    void persistOpportunity(selected.id, { status });
     if (status === "dismissed") {
       const next = filtered.find((item) => item.id !== selected.id);
       if (next) setSelectedId(next.id);
@@ -216,10 +265,25 @@ export default function OpportunityInbox({ initialOpportunities }: OpportunityIn
     setMonitorSettingsDirty(true);
   }
 
-  function saveMonitorSettings(settings = monitorSettings) {
-    window.localStorage.setItem(MONITOR_SETTINGS_KEY, JSON.stringify(settings));
+  async function saveMonitorSettings(settings = monitorSettings) {
+    if (databaseConfigured) {
+      try {
+        const response = await fetch("/api/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ settings }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Could not save monitor settings");
+      } catch (error) {
+        setToast(error instanceof Error ? error.message : "Could not save monitor settings");
+        return;
+      }
+    } else {
+      window.localStorage.setItem(MONITOR_SETTINGS_KEY, JSON.stringify(settings));
+    }
     setMonitorSettingsDirty(false);
-    setToast("Monitor settings saved");
+    setToast(databaseConfigured ? "Monitor settings saved to the database" : "Monitor settings saved locally");
   }
 
   function resetMonitorSettings() {
@@ -259,7 +323,7 @@ export default function OpportunityInbox({ initialOpportunities }: OpportunityIn
   }
 
   async function testMonitor() {
-    saveMonitorSettings();
+    await saveMonitorSettings();
     await runScan(monitorSettings);
     setActiveView("opportunities");
   }
@@ -323,9 +387,15 @@ export default function OpportunityInbox({ initialOpportunities }: OpportunityIn
         <div className="monitor-card">
           <div className="monitor-card-head">
             <span className="live-dot" />
-            {connectedSourceCount ? `${connectedSourceCount} connection${connectedSourceCount === 1 ? "" : "s"} ready` : "Setup needed"}
+            {connectedSourceCount
+              ? `${connectedSourceCount} connection${connectedSourceCount === 1 ? "" : "s"} ready${databaseConfigured ? " · cloud saved" : ""}`
+              : "Setup needed"}
           </div>
-          <p>{connectedSourceCount ? "Your keys are stored server-side and ready for live scans." : "Connect API keys when you&apos;re ready. Everything works locally for now."}</p>
+          <p>{databaseConfigured
+            ? "Scans, drafts, and settings are stored in your hosted database."
+            : connectedSourceCount
+              ? "Your keys are server-side; data is using this browser until Postgres is connected."
+              : "Connect API keys and Postgres when you&apos;re ready."}</p>
           <button type="button" onClick={() => setActiveView("integrations")}>
             {connectedSourceCount ? "Manage APIs" : "Connect APIs"} <ExternalLink size={12} />
           </button>
@@ -545,13 +615,16 @@ export default function OpportunityInbox({ initialOpportunities }: OpportunityIn
                           updateOpportunity(selected.id, { draft: event.target.value });
                           setDraftSaved(false);
                         }}
-                        onBlur={() => setDraftSaved(true)}
+                        onBlur={() => {
+                          setDraftSaved(true);
+                          void persistOpportunity(selected.id, { draft: selected.draft });
+                        }}
                         aria-label="Suggested response draft"
                       />
                       <div className="draft-foot">
                         <span>{selected.draft.length} characters</span>
                         <span className={draftSaved ? "saved-state" : "saving-state"}>
-                          {draftSaved ? <><Check size={12} /> Saved locally</> : "Saving…"}
+                          {draftSaved ? <><Check size={12} /> {databaseConfigured ? "Saved" : "Saved locally"}</> : "Saving…"}
                         </span>
                       </div>
                     </div>

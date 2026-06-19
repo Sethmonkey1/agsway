@@ -130,14 +130,17 @@ export default function IntegrationSettingsPanel({
         <span><ShieldCheck size={19} /></span>
         <div>
           <strong>Keys stay server-side.</strong>
-          <p>They are written to the git-ignored <code>.env.local</code> file and are never returned to the browser or saved in localStorage.</p>
+          <p>{status?.writable
+            ? <>They are written to the git-ignored <code>.env.local</code> file and never returned to the browser.</>
+            : <>This deployment reads them from Vercel&apos;s encrypted environment variables and never returns them to the browser.</>}
+          </p>
         </div>
-        <span className="local-only-pill"><LockKeyhole size={12} /> Local workspace</span>
+        <span className="local-only-pill"><LockKeyhole size={12} /> {status?.writable ? "Local workspace" : "Hosted securely"}</span>
       </section>
 
       {!isLoading && status && !status.writable && (
         <section className="deployment-secret-note">
-          This screen is read-only outside the local app. Deployed environments should use encrypted hosting secrets.
+          This screen is read-only on Vercel. Add or update keys under Project Settings → Environment Variables, then redeploy.
         </section>
       )}
 

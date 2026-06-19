@@ -293,7 +293,7 @@ export default function MonitorSettingsPanel({
             </select>
           </label>
           <label>
-            <span><strong>Scan cadence</strong><small>Used when scheduled monitoring is connected.</small></span>
+            <span><strong>Scan cadence preference</strong><small>The free hosted schedule runs daily; faster schedules can be enabled later.</small></span>
             <select
               value={settings.scanCadenceHours}
               onChange={(event) => onChange({ ...settings, scanCadenceHours: Number(event.target.value) })}

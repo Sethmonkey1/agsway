@@ -10,8 +10,9 @@ A human-in-the-loop inbox for finding Reddit, Quora, and YouTube conversations w
 - Editable monitor settings for sources, subreddits, search phrases, freshness, cadence, and score threshold
 - In-app API integration settings with masked status and server-only local storage
 - Editable, non-promotional response suggestions
-- Save, dismiss, copy, and mark-as-replied actions stored locally in the browser
-- Protected endpoint for scheduled scans
+- Save, dismiss, drafts, monitor settings, and scan results stored in Postgres when `DATABASE_URL` is configured
+- Browser storage fallback for the local desktop app
+- Protected daily Vercel cron scan
 
 The app deliberately does not auto-post. A person should read the full conversation, adapt the answer, and check each community's rules.
 
@@ -38,18 +39,26 @@ Add these values to `.env.local`:
 - `SERPER_API_KEY`: searches recent Google results for Reddit and Quora conversations.
 - `YOUTUBE_API_KEY`: requires YouTube Data API v3 in a Google Cloud project.
 - `CRON_SECRET`: protects the scheduled scan endpoint.
+- `DATABASE_URL`: standard hosted Postgres connection string (Neon through the Vercel Marketplace is the simplest option).
 
 For local use, Serper and YouTube keys can also be added from **Settings → Integrations**. The server writes them to `.env.local`; the browser only receives whether each key is configured plus a masked suffix. Raw keys are never saved in localStorage or returned by the API.
 
 In-app secret editing is intentionally limited to `localhost`/`127.0.0.1`. A deployed version should store keys in encrypted hosting secrets or a server-side secrets vault.
 
-The manual scan endpoint is `POST /api/scan`. A scheduler can call `GET /api/cron/scan` with `Authorization: Bearer <CRON_SECRET>`.
+The manual scan endpoint is `POST /api/scan`. It stores new opportunities when Postgres is connected. Vercel calls `GET /api/cron/scan` daily using the schedule in `vercel.json`; `CRON_SECRET` protects that endpoint.
 
-Monitor settings are currently saved in the browser and are sent with manual scans. Before multi-user or unattended deployment, move them into the same durable database used for opportunity deduplication.
+## Deploy on Vercel with durable storage
+
+1. In the Vercel project, open **Storage** or **Marketplace** and add a Neon Postgres database.
+2. Make sure its connection string is exposed to the project as `DATABASE_URL`.
+3. Under **Project Settings → Environment Variables**, add `SERPER_API_KEY`, `YOUTUBE_API_KEY`, and a long random `CRON_SECRET`.
+4. Redeploy the project so the new variables are available.
+
+On the first request, Swaya creates its two tables and indexes automatically. API keys remain in Vercel; they are never written to Postgres or sent to the browser. The included free-friendly cron schedule runs once each day at 14:00 UTC.
 
 ## Sensible rollout
 
 1. Run in review-only mode and tune false positives.
-2. Add a durable database and Slack/email alerts before scheduling unattended scans.
+2. Add Slack/email alerts once the stored results and relevance tuning look good.
 3. Add AI classification/drafting only after collecting examples of good and bad matches.
 4. Keep publishing manual. Helpful participation is the product; automated posting is a fast route to spam.
