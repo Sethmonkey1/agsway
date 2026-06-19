@@ -101,11 +101,6 @@ export function normalizeMonitorSettings(value: unknown): MonitorSettings {
     youtubeQueries: cleanList(input.youtubeQueries, defaultMonitorSettings.youtubeQueries),
     minScore: boundedNumber(input.minScore, defaultMonitorSettings.minScore, 50, 95),
     lookbackDays: boundedNumber(input.lookbackDays, defaultMonitorSettings.lookbackDays, 1, 30),
-    scanCadenceHours: boundedNumber(
-      input.scanCadenceHours,
-      defaultMonitorSettings.scanCadenceHours,
-      1,
-      24,
-    ),
+    scanCadenceHours: 24,
   };
 }

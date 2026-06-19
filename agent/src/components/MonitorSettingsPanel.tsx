@@ -293,16 +293,8 @@ export default function MonitorSettingsPanel({
             </select>
           </label>
           <label>
-            <span><strong>Scan cadence preference</strong><small>The free hosted schedule runs daily; faster schedules can be enabled later.</small></span>
-            <select
-              value={settings.scanCadenceHours}
-              onChange={(event) => onChange({ ...settings, scanCadenceHours: Number(event.target.value) })}
-            >
-              <option value={3}>Every 3 hours</option>
-              <option value={6}>Every 6 hours</option>
-              <option value={12}>Every 12 hours</option>
-              <option value={24}>Once a day</option>
-            </select>
+            <span><strong>Hosted schedule</strong><small>Vercel automatically runs the monitor every day at 14:00 UTC.</small></span>
+            <output className="hosted-schedule-value">Once a day</output>
           </label>
         </div>
       </section>

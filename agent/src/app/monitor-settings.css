@@ -423,6 +423,17 @@
   font-size: 12px;
 }
 
+.hosted-schedule-value {
+  min-width: 165px;
+  border: 1px solid #dedce4;
+  border-radius: 8px;
+  background: white;
+  padding: 10px 12px;
+  color: var(--ink);
+  font-size: 12px;
+  text-align: center;
+}
+
 .score-control > div {
   display: flex;
   align-items: center;
