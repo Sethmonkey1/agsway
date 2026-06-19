@@ -41,9 +41,9 @@ Add these values to `.env.local`:
 - `CRON_SECRET`: protects the scheduled scan endpoint.
 - `DATABASE_URL`: standard hosted Postgres connection string (Neon through the Vercel Marketplace is the simplest option).
 
-For local use, Serper and YouTube keys can also be added from **Settings → Integrations**. The server writes them to `.env.local`; the browser only receives whether each key is configured plus a masked suffix. Raw keys are never saved in localStorage or returned by the API.
+Serper and YouTube keys can be added from **Settings → Integrations** in both versions. Locally, the server writes them to `.env.local`. On Vercel, enter `CRON_SECRET` once to unlock the screen; keys are AES-GCM encrypted before being stored in Neon. The browser only receives masked connection status—raw saved keys are never returned by the API or placed in localStorage.
 
-In-app secret editing is intentionally limited to `localhost`/`127.0.0.1`. A deployed version should store keys in encrypted hosting secrets or a server-side secrets vault.
+Use a long, random `CRON_SECRET` in production. It protects scheduled scans, unlocks hosted key management, and derives the database-encryption key. If it is changed later, re-enter the source API keys in Swaya.
 
 The manual scan endpoint is `POST /api/scan`. It stores new opportunities when Postgres is connected. Vercel calls `GET /api/cron/scan` daily using the schedule in `vercel.json`; `CRON_SECRET` protects that endpoint.
 

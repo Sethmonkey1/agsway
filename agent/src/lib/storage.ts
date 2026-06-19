@@ -253,7 +253,14 @@ export async function loadHostedIntegrationSecrets(): Promise<HostedIntegrationS
     select name, encrypted_value from swaya_integration_secrets where name in ('serper', 'youtube')
   `;
   const result: HostedIntegrationSecrets = {};
-  for (const row of rows) result[row.name] = decryptSecret(row.encrypted_value);
+  for (const row of rows) {
+    try {
+      result[row.name] = decryptSecret(row.encrypted_value);
+    } catch {
+      // If the workspace encryption key was rotated, allow the owner to
+      // unlock the page and replace the now-unreadable integration value.
+    }
+  }
   return result;
 }
 

@@ -57,17 +57,37 @@ export default function IntegrationSettingsPanel({
   const [visible, setVisible] = useState<Record<IntegrationName, boolean>>({ serper: false, youtube: false });
   const [isSaving, setIsSaving] = useState(false);
   const [confirming, setConfirming] = useState<IntegrationName | null>(null);
+  const [adminKey, setAdminKey] = useState("");
+  const [unlocked, setUnlocked] = useState(false);
   const hasChanges = Boolean(values.serper.trim() || values.youtube.trim());
+  const hostedLocked = Boolean(status?.requiresUnlock && !unlocked);
 
   async function postIntegrations(payload: Record<string, unknown>) {
     const response = await fetch("/api/integrations", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(adminKey ? { "X-Swaya-Admin-Key": adminKey } : {}),
+      },
       body: JSON.stringify(payload),
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || "Could not update integrations.");
     return result as IntegrationStatus;
+  }
+
+  async function unlockHostedSettings() {
+    if (!adminKey.trim()) return;
+    setIsSaving(true);
+    try {
+      await postIntegrations({ verify: true });
+      setUnlocked(true);
+      onToast("Hosted key settings unlocked");
+    } catch (error) {
+      onToast(error instanceof Error ? error.message : "Could not unlock hosted settings");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   async function save() {
@@ -119,7 +139,7 @@ export default function IntegrationSettingsPanel({
           type="button"
           className="save-integrations-button"
           onClick={save}
-          disabled={!hasChanges || isSaving || !status?.writable}
+          disabled={!hasChanges || isSaving || !status?.writable || hostedLocked}
         >
           {isSaving ? <LoaderCircle size={15} className="spinning" /> : <Save size={15} />}
           {isSaving ? "Saving…" : "Save connections"}
@@ -130,17 +150,40 @@ export default function IntegrationSettingsPanel({
         <span><ShieldCheck size={19} /></span>
         <div>
           <strong>Keys stay server-side.</strong>
-          <p>{status?.writable
+          <p>{status?.localOnly
             ? <>They are written to the git-ignored <code>.env.local</code> file and never returned to the browser.</>
-            : <>This deployment reads them from Vercel&apos;s encrypted environment variables and never returns them to the browser.</>}
+            : <>Hosted keys are encrypted before Neon stores them and are never returned to the browser.</>}
           </p>
         </div>
-        <span className="local-only-pill"><LockKeyhole size={12} /> {status?.writable ? "Local workspace" : "Hosted securely"}</span>
+        <span className="local-only-pill"><LockKeyhole size={12} /> {status?.localOnly ? "Local workspace" : "Hosted securely"}</span>
       </section>
 
       {!isLoading && status && !status.writable && (
         <section className="deployment-secret-note">
-          This screen is read-only on Vercel. Add or update keys under Project Settings → Environment Variables, then redeploy.
+          Connect Neon and configure <code>CRON_SECRET</code> in Vercel once to enable encrypted in-app key management.
+        </section>
+      )}
+
+      {!isLoading && status?.requiresUnlock && (
+        <section className="hosted-unlock-card">
+          <div>
+            <LockKeyhole size={17} />
+            <span><strong>{unlocked ? "Hosted settings unlocked" : "Unlock hosted settings"}</strong><small>Enter your CRON_SECRET workspace admin key. It stays in memory only for this page.</small></span>
+          </div>
+          {!unlocked && (
+            <div className="hosted-unlock-form">
+              <input
+                type="password"
+                value={adminKey}
+                onChange={(event) => setAdminKey(event.target.value)}
+                onKeyDown={(event) => { if (event.key === "Enter") void unlockHostedSettings(); }}
+                placeholder="Workspace admin key"
+                autoComplete="off"
+                aria-label="Workspace admin key"
+              />
+              <button type="button" onClick={unlockHostedSettings} disabled={!adminKey.trim() || isSaving}>Unlock</button>
+            </div>
+          )}
         </section>
       )}
 
@@ -189,7 +232,7 @@ export default function IntegrationSettingsPanel({
                       placeholder={configured ? `${connection?.masked} — paste to replace` : integration.placeholder}
                       autoComplete="off"
                       spellCheck={false}
-                      disabled={!status?.writable || isSaving}
+                      disabled={!status?.writable || isSaving || hostedLocked}
                     />
                     <button
                       type="button"
@@ -217,7 +260,7 @@ export default function IntegrationSettingsPanel({
                       className={confirming === name ? "confirm-disconnect" : "disconnect-button"}
                       onClick={() => disconnect(name)}
                       onBlur={() => setConfirming((current) => current === name ? null : current)}
-                      disabled={isSaving || !status?.writable}
+                      disabled={isSaving || !status?.writable || hostedLocked}
                       aria-label={confirming === name ? `Confirm disconnect ${integration.name}` : `Disconnect ${integration.name}`}
                     >
                       <Trash2 size={13} />

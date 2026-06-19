@@ -108,6 +108,66 @@
   font-size: 12px;
 }
 
+.hosted-unlock-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border: 1px solid #cce7db;
+  border-radius: 12px;
+  background: #f7fcf9;
+  padding: 14px 16px;
+}
+
+.hosted-unlock-card > div:first-child,
+.hosted-unlock-card > div:first-child span {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.hosted-unlock-card > div:first-child span {
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hosted-unlock-card svg { color: var(--brand); }
+.hosted-unlock-card strong { color: var(--ink); font-size: 12px; }
+.hosted-unlock-card small { color: var(--muted); font-size: 11px; line-height: 1.45; }
+
+.hosted-unlock-form {
+  display: flex;
+  gap: 8px;
+  min-width: min(100%, 330px);
+}
+
+.hosted-unlock-form input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background: white;
+  padding: 9px 11px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+.hosted-unlock-form input:focus { border-color: var(--brand); }
+
+.hosted-unlock-form button {
+  border: 0;
+  border-radius: 9px;
+  background: var(--brand);
+  color: white;
+  padding: 9px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.hosted-unlock-form button:disabled { cursor: not-allowed; opacity: .5; }
+
 .integration-card-list {
   display: flex;
   flex-direction: column;
@@ -388,6 +448,13 @@
 }
 
 @media (max-width: 620px) {
+  .hosted-unlock-card,
+  .hosted-unlock-form {
+    align-items: stretch;
+    flex-direction: column;
+    width: 100%;
+  }
+
   .secret-input-row {
     grid-template-columns: 1fr;
   }
