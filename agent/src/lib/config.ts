@@ -1,22 +1,24 @@
 import type { MonitorSettings } from "./types";
 
 export const clubQueries = [
-  "how to get sponsors for college club",
-  "student organization funding",
-  "sponsors for fraternity event",
-  "brands that sponsor college events",
-  "free products for college clubs",
-  "fundraising ideas for student organizations",
-  "how to contact brands for sponsorship",
+  "college club sponsorship",
+  "student organization sponsorship",
+  "campus event sponsors",
+  "fraternity event sponsorship",
+  "sorority event sponsorship",
+  "product donations for student organizations",
+  "student club brand partnerships",
+  "sponsorship proposal for college event",
 ] as const;
 
 export const brandQueries = [
-  "college marketing ideas",
-  "campus ambassador alternatives",
-  "how to market to college students",
-  "campus activation",
-  "Gen Z product sampling",
-  "student ambassador program",
+  "campus marketing strategy",
+  "reach college students",
+  "student organization partnerships",
+  "campus product sampling",
+  "college event sponsorship",
+  "student ambassador programs",
+  "Gen Z campus activation",
 ] as const;
 
 export const subreddits = [
@@ -24,26 +26,25 @@ export const subreddits = [
   "Frat",
   "Sororities",
   "marketing",
-  "Entrepreneur",
-  "startups",
   "advertising",
 ] as const;
 
 export const quoraQueries = [
-  'site:quora.com "sponsors for college events"',
-  'site:quora.com "student organization funding"',
-  'site:quora.com "market to college students"',
-  'site:quora.com "campus ambassador program"',
-  'site:quora.com "brands sponsor university clubs"',
+  "college event sponsors",
+  "student organization sponsorship",
+  "brands sponsor college clubs",
+  "market to college students",
+  "campus ambassador program alternatives",
+  "product sampling on college campuses",
 ] as const;
 
 export const youtubeQueries = [
-  "college club fundraising",
-  "event sponsorships for student organizations",
-  "student organization leadership funding",
-  "campus marketing",
-  "brand ambassador programs college",
-  "Gen Z product sampling",
+  "college club sponsorship",
+  "college event sponsorship",
+  "student organization sponsorship",
+  "campus marketing strategy",
+  "college brand ambassador program",
+  "product sampling college campuses",
 ] as const;
 
 export const monitoredQuestionPhrases = [
@@ -66,9 +67,9 @@ export const defaultMonitorSettings: MonitorSettings = {
   brandKeywords: [...brandQueries],
   quoraQueries: [...quoraQueries],
   youtubeQueries: [...youtubeQueries],
-  minScore: 70,
-  lookbackDays: 14,
-  scanCadenceHours: 6,
+  minScore: 75,
+  lookbackDays: 30,
+  scanCadenceHours: 24,
 };
 
 function cleanList(value: unknown, fallback: string[], limit = 30) {
