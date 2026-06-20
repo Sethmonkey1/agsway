@@ -18,7 +18,7 @@ interface OpportunityRow {
   posted_at: Date | string;
   score: number;
   intent: string;
-  tags: string[];
+  tags: unknown;
   reasoning: string;
   draft: string;
   status: OpportunityStatus;
@@ -99,6 +99,19 @@ function toIso(value: Date | string) {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }
 
+function stringArray(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === "string");
+  if (typeof value !== "string") return [];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (Array.isArray(parsed)) return parsed.filter((item): item is string => typeof item === "string");
+    if (typeof parsed === "string") return stringArray(parsed);
+  } catch {
+    // Legacy plain-text values are handled below.
+  }
+  return value.trim() ? [value.trim()] : [];
+}
+
 function rowToOpportunity(row: OpportunityRow): Opportunity {
   return {
     id: row.id,
@@ -112,7 +125,7 @@ function rowToOpportunity(row: OpportunityRow): Opportunity {
     postedAt: toIso(row.posted_at),
     score: row.score,
     intent: row.intent,
-    tags: row.tags,
+    tags: stringArray(row.tags),
     reasoning: row.reasoning,
     draft: row.draft,
     status: row.status,

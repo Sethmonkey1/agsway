@@ -89,6 +89,18 @@ function repairStoredText(value: string) {
 }
 
 function repairStoredOpportunity(item: Opportunity): Opportunity {
+  const storedTags: unknown = item.tags;
+  let tags: string[] = [];
+  if (Array.isArray(storedTags)) {
+    tags = storedTags.filter((tag): tag is string => typeof tag === "string");
+  } else if (typeof storedTags === "string") {
+    try {
+      const parsed = JSON.parse(storedTags) as unknown;
+      tags = Array.isArray(parsed) ? parsed.filter((tag): tag is string => typeof tag === "string") : [storedTags];
+    } catch {
+      tags = [storedTags];
+    }
+  }
   return {
     ...item,
     community: repairStoredText(item.community),
@@ -96,7 +108,7 @@ function repairStoredOpportunity(item: Opportunity): Opportunity {
     excerpt: repairStoredText(item.excerpt),
     reasoning: repairStoredText(item.reasoning),
     draft: repairStoredText(item.draft),
-    tags: item.tags.map(repairStoredText),
+    tags: tags.map(repairStoredText),
   };
 }
 
