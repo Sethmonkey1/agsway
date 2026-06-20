@@ -540,7 +540,7 @@ export default function OpportunityInbox({ initialOpportunities }: OpportunityIn
               <div className="opportunity-list" aria-label="Opportunities">
                 <div className="list-heading">
                   <span>{filtered.length} opportunities</span>
-                  <span>Highest relevance</span>
+                  <span>Newest saved</span>
                 </div>
                 {filtered.length === 0 ? (
                   <div className="empty-state">
@@ -549,10 +549,7 @@ export default function OpportunityInbox({ initialOpportunities }: OpportunityIn
                     <p>{activeCount === 0 ? "Run a scan to find real conversations from your connected sources." : "Try a different source or search phrase."}</p>
                   </div>
                 ) : (
-                  filtered
-                    .slice()
-                    .sort((a, b) => b.score - a.score)
-                    .map((item) => (
+                  filtered.map((item) => (
                       <button
                         type="button"
                         className={`opportunity-card ${selected?.id === item.id ? "selected" : ""}`}
