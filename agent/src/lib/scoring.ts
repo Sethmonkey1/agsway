@@ -23,6 +23,14 @@ const brandSignals = [
   "college marketing",
   "reach college students",
   "partnership",
+  "users",
+  "customers",
+  "customer acquisition",
+  "user acquisition",
+  "traction",
+  "distribution",
+  "early adopters",
+  "go to market",
   "campus activation",
   "ambassador",
   "product sampling",
@@ -41,6 +49,13 @@ const highIntentSignals = [
   "need funding",
   "need money",
   "where can",
+  "can't find",
+  "cannot find",
+  "first users",
+  "first customers",
+  "no users",
+  "no traction",
+  "struggling",
   "send products",
   "small budget",
   "proposal",
@@ -85,7 +100,9 @@ export function classifyCandidate(candidate: SourceCandidate) {
     score,
     intent:
       audience === "brand"
-        ? "Exploring campus marketing"
+        ? text.includes("traction") || text.includes("users") || text.includes("customers")
+          ? "Looking for users and distribution"
+          : "Exploring campus marketing"
         : text.includes("proposal")
           ? "Building a sponsor proposal"
           : "Seeking sponsorship guidance",

@@ -12,21 +12,25 @@ export const clubQueries = [
 ] as const;
 
 export const brandQueries = [
-  "campus marketing strategy",
-  "reach college students",
-  "student organization partnerships",
-  "campus product sampling",
-  "college event sponsorship",
-  "student ambassador programs",
-  "Gen Z campus activation",
+  "how to find first users",
+  "can't find users",
+  "how to get first customers",
+  "struggling with customer acquisition",
+  "product launch no traction",
+  "how to distribute my product",
+  "where to find early adopters",
+  "need users for my app",
 ] as const;
 
 export const subreddits = [
   "college",
   "Frat",
   "Sororities",
-  "marketing",
-  "advertising",
+  "founder",
+  "startups",
+  "SaaS",
+  "Entrepreneur",
+  "SideProject",
 ] as const;
 
 export const quoraQueries = [
@@ -95,6 +99,12 @@ export function normalizeMonitorSettings(value: unknown): MonitorSettings {
     && input.brandKeywords.includes("college marketing ideas")
     && Array.isArray(input.youtubeQueries)
     && input.youtubeQueries.includes("student organization leadership funding");
+  const brandGrowthUpgrade = Array.isArray(input.brandKeywords)
+    && !input.brandKeywords.includes("how to find first users")
+    && input.brandKeywords.some((keyword) =>
+      keyword === "campus marketing strategy" || keyword === "college marketing ideas"
+    );
+  const useUpgradedPreset = legacyPreset || brandGrowthUpgrade;
 
   return {
     enabledSources: {
@@ -102,13 +112,13 @@ export function normalizeMonitorSettings(value: unknown): MonitorSettings {
       quora: input.enabledSources?.quora !== false,
       youtube: input.enabledSources?.youtube !== false,
     },
-    subreddits: legacyPreset
+    subreddits: useUpgradedPreset
       ? [...defaultMonitorSettings.subreddits]
       : cleanList(input.subreddits, defaultMonitorSettings.subreddits, 40),
     clubKeywords: legacyPreset
       ? [...defaultMonitorSettings.clubKeywords]
       : cleanList(input.clubKeywords, defaultMonitorSettings.clubKeywords),
-    brandKeywords: legacyPreset
+    brandKeywords: useUpgradedPreset
       ? [...defaultMonitorSettings.brandKeywords]
       : cleanList(input.brandKeywords, defaultMonitorSettings.brandKeywords),
     quoraQueries: legacyPreset

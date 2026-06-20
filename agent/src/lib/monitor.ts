@@ -22,13 +22,34 @@ const partnershipSignals = [
   "reach college students", "market to college", "student ambassador",
 ];
 
+const brandPainSignals = [
+  "can't find users", "cannot find users", "find users", "first users", "get users", "need users",
+  "no users", "find customers", "first customers", "get customers", "customer acquisition",
+  "user acquisition", "no traction", "gain traction", "early adopters", "distribution",
+  "go to market", "go-to-market", "marketing channel", "struggling to grow",
+];
+
+const brandCommunityNames = new Set([
+  "marketing", "advertising", "entrepreneur", "startups", "saas", "smallbusiness",
+  "founder", "sideproject", "indiehackers",
+]);
+
 function isSwayaRelevant(candidate: SourceCandidate, settings: MonitorSettings) {
   const text = `${candidate.community} ${candidate.title} ${candidate.excerpt}`.toLowerCase();
   const community = candidate.community.replace(/^r\//i, "").toLowerCase();
-  const broadCommunities = new Set(["marketing", "advertising", "entrepreneur", "startups", "smallbusiness"]);
   const configuredCampusCommunity = settings.subreddits
     .map((item) => item.replace(/^r\//i, "").toLowerCase())
-    .includes(community) && !broadCommunities.has(community);
+    .includes(community) && !brandCommunityNames.has(community);
+  if (brandCommunityNames.has(community)) {
+    const audienceProblem = (text.includes("users") || text.includes("customers"))
+      && ["find", "get", "need", "first", "no ", "acquisition", "struggl"].some((signal) => text.includes(signal));
+    return audienceProblem
+      || text.includes("traction")
+      || text.includes("distribut")
+      || brandPainSignals.some((signal) => text.includes(signal))
+      || (campusSignals.some((signal) => text.includes(signal))
+        && partnershipSignals.some((signal) => text.includes(signal)));
+  }
   return (configuredCampusCommunity || campusSignals.some((signal) => text.includes(signal)))
     && partnershipSignals.some((signal) => text.includes(signal));
 }
@@ -59,12 +80,14 @@ function redditQueries(settings: MonitorSettings) {
     .slice(0, 8);
   const clubTopics = topicClause(settings.clubKeywords, ["sponsor", "funding", "fundraiser", "donation"]);
   const brandTopics = topicClause(settings.brandKeywords, ["campus", "college", "sampling", "ambassador"]);
-  const brandCommunities = new Set(["marketing", "advertising"]);
   const intentClause = "sponsor OR sponsorship OR funding OR fundraiser OR donation OR grant OR budget OR partnership";
+  const growthClause = '"find users" OR "first users" OR "get users" OR "need users" OR "first customers" OR "get customers" OR "customer acquisition" OR traction OR distribution OR "early adopters"';
 
   return communities.map((community) => {
-    const contextualTopics = brandCommunities.has(community.toLowerCase()) ? brandTopics : clubTopics;
-    return `site:reddit.com/r/${community}/comments (${intentClause}) (${contextualTopics})`;
+    if (brandCommunityNames.has(community.toLowerCase())) {
+      return `site:reddit.com/r/${community}/comments (${growthClause}) (${brandTopics})`;
+    }
+    return `site:reddit.com/r/${community}/comments (${intentClause}) (${clubTopics})`;
   });
 }
 

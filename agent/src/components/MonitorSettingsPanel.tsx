@@ -217,7 +217,7 @@ export default function MonitorSettingsPanel({
       <section className="settings-section">
         <div className="settings-section-heading">
           <div className="settings-section-icon"><Target size={17} /></div>
-          <div><h2>Intent keywords</h2><p>Separate the student-organization problem from the brand-side opportunity.</p></div>
+          <div><h2>Intent keywords</h2><p>Track student sponsorship needs and founder distribution problems separately.</p></div>
         </div>
         <div className="monitor-editor-grid">
           <TagEditor
@@ -228,10 +228,10 @@ export default function MonitorSettingsPanel({
             onChange={(values) => updateList("clubKeywords", values)}
           />
           <TagEditor
-            label="Brand-side phrases"
-            description="Questions from marketers looking for campus access or Gen Z reach."
+            label="Brand growth phrases"
+            description="Founders and brands struggling to find users, customers, traction, or distribution."
             values={settings.brandKeywords}
-            placeholder="how to activate on college campuses"
+            placeholder="how do I find my first users"
             onChange={(values) => updateList("brandKeywords", values)}
           />
         </div>
