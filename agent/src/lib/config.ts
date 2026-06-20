@@ -74,6 +74,8 @@ export const defaultMonitorSettings: MonitorSettings = {
   minScore: 70,
   lookbackDays: 30,
   scanCadenceHours: 24,
+  emailAlertsEnabled: true,
+  alertEmail: "team@getswaya.com",
 };
 
 function cleanList(value: unknown, fallback: string[], limit = 30) {
@@ -134,5 +136,9 @@ export function normalizeMonitorSettings(value: unknown): MonitorSettings {
       ? defaultMonitorSettings.lookbackDays
       : boundedNumber(input.lookbackDays, defaultMonitorSettings.lookbackDays, 1, 30),
     scanCadenceHours: 24,
+    emailAlertsEnabled: input.emailAlertsEnabled !== false,
+    alertEmail: typeof input.alertEmail === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.alertEmail.trim())
+      ? input.alertEmail.trim()
+      : defaultMonitorSettings.alertEmail,
   };
 }

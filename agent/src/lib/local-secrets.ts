@@ -14,6 +14,7 @@ const ENV_FILE = path.join(process.cwd(), ".env.local");
 const integrationKeys = {
   serper: "SERPER_API_KEY",
   youtube: "YOUTUBE_API_KEY",
+  resend: "RESEND_API_KEY",
 } as const;
 
 export type IntegrationName = keyof typeof integrationKeys;
@@ -72,6 +73,7 @@ export async function getIntegrationStatus(request: Request): Promise<Integratio
   const hostedValues = local ? {} : await loadHostedIntegrationSecrets();
   const serper = hostedValues.serper || process.env.SERPER_API_KEY || fileValues.get("SERPER_API_KEY");
   const youtube = hostedValues.youtube || process.env.YOUTUBE_API_KEY || fileValues.get("YOUTUBE_API_KEY");
+  const resend = hostedValues.resend || process.env.RESEND_API_KEY || fileValues.get("RESEND_API_KEY");
   const hostedWritable = !local && canManageHostedSecrets();
 
   return {
@@ -80,6 +82,7 @@ export async function getIntegrationStatus(request: Request): Promise<Integratio
     requiresUnlock: hostedWritable,
     serper: { configured: Boolean(serper), masked: maskSecret(serper) },
     youtube: { configured: Boolean(youtube), masked: maskSecret(youtube) },
+    resend: { configured: Boolean(resend), masked: maskSecret(resend) },
   };
 }
 
@@ -95,24 +98,25 @@ function validateSecret(value: unknown) {
 
 export async function updateHostedIntegrations(
   request: Request,
-  updates: { serper?: unknown; youtube?: unknown; clear?: unknown },
+  updates: { serper?: unknown; youtube?: unknown; resend?: unknown; clear?: unknown },
 ) {
   if (canManageLocalSecrets(request)) {
     throw new Error("Hosted integration storage is not used by the local app.");
   }
   const clear = Array.isArray(updates.clear)
-    ? updates.clear.filter((item): item is IntegrationName => item === "serper" || item === "youtube")
+    ? updates.clear.filter((item): item is IntegrationName => item === "serper" || item === "youtube" || item === "resend")
     : [];
   await updateHostedIntegrationSecrets({
     serper: validateSecret(updates.serper),
     youtube: validateSecret(updates.youtube),
+    resend: validateSecret(updates.resend),
   }, clear);
   return getIntegrationStatus(request);
 }
 
 export async function updateLocalIntegrations(
   request: Request,
-  updates: { serper?: unknown; youtube?: unknown; clear?: unknown },
+  updates: { serper?: unknown; youtube?: unknown; resend?: unknown; clear?: unknown },
 ) {
   if (!canManageLocalSecrets(request)) {
     throw new Error("In-app key management is available only on the local Swaya server.");
@@ -121,11 +125,12 @@ export async function updateLocalIntegrations(
   const content = await readEnvFile();
   const lines = content ? content.split(/\r?\n/) : [];
   const clear = Array.isArray(updates.clear)
-    ? new Set(updates.clear.filter((item): item is IntegrationName => item === "serper" || item === "youtube"))
+    ? new Set(updates.clear.filter((item): item is IntegrationName => item === "serper" || item === "youtube" || item === "resend"))
     : new Set<IntegrationName>();
   const nextValues = {
     serper: validateSecret(updates.serper),
     youtube: validateSecret(updates.youtube),
+    resend: validateSecret(updates.resend),
   };
 
   const managedEnvKeys = new Set(Object.values(integrationKeys));

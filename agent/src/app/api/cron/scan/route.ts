@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runMonitor } from "@/lib/monitor";
 import { loadMonitorSettings, saveOpportunities } from "@/lib/storage";
+import { emailNewScanFindings } from "@/lib/email-alerts";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,14 @@ export async function GET(request: NextRequest) {
     const settings = await loadMonitorSettings();
     const result = await runMonitor(settings);
     await saveOpportunities(result.opportunities);
-    return NextResponse.json({ ...result, stored: result.opportunities.length });
+    let notification;
+    try {
+      notification = await emailNewScanFindings(settings, result.opportunities);
+    } catch (error) {
+      result.notes.push(error instanceof Error ? error.message : "Email notification failed.");
+      notification = { configured: true, sentCount: 0, recipient: settings.alertEmail };
+    }
+    return NextResponse.json({ ...result, stored: result.opportunities.length, notification });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Scheduled scan failed.";
     return NextResponse.json({ error: message }, { status: 500 });

@@ -38,10 +38,12 @@ Add these values to `.env.local`:
 
 - `SERPER_API_KEY`: searches recent Google results for Reddit and Quora conversations.
 - `YOUTUBE_API_KEY`: requires YouTube Data API v3 in a Google Cloud project.
+- `RESEND_API_KEY`: sends a once-per-scan digest containing newly discovered opportunities.
+- `ALERT_EMAIL_FROM`: optional verified sender, such as `Swaya Agent <alerts@getswaya.com>`.
 - `CRON_SECRET`: protects the scheduled scan endpoint.
 - `DATABASE_URL`: standard hosted Postgres connection string (Neon through the Vercel Marketplace is the simplest option).
 
-Serper and YouTube keys can be added from **Settings → Integrations** in both versions. Locally, the server writes them to `.env.local`. On Vercel, enter `CRON_SECRET` once to unlock the screen; keys are AES-GCM encrypted before being stored in Neon. The browser only receives masked connection status—raw saved keys are never returned by the API or placed in localStorage.
+Serper, YouTube, and Resend keys can be added from **Settings → Integrations** in both versions. Locally, the server writes them to `.env.local`. On Vercel, enter `CRON_SECRET` once to unlock the screen; keys are AES-GCM encrypted before being stored in Neon. The browser only receives masked connection status—raw saved keys are never returned by the API or placed in localStorage.
 
 Use a long, random `CRON_SECRET` in production. It protects scheduled scans, unlocks hosted key management, and derives the database-encryption key. If it is changed later, re-enter the source API keys in Swaya.
 

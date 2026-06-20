@@ -5,6 +5,7 @@ import {
   Clock3,
   Hash,
   MessageCircle,
+  Mail,
   Plus,
   RefreshCw,
   RotateCcw,
@@ -167,6 +168,33 @@ export default function MonitorSettingsPanel({
         <div><Hash size={17} /><strong>{settings.subreddits.length}</strong><span>communities</span></div>
         <div><Search size={17} /><strong>{phraseCount}</strong><span>search phrases</span></div>
         <div><Clock3 size={17} /><strong>{settings.scanCadenceHours}h</strong><span>scan cadence</span></div>
+      </section>
+
+      <section className="settings-section">
+        <div className="settings-section-heading">
+          <div className="settings-section-icon"><Mail size={17} /></div>
+          <div><h2>Email alerts</h2><p>Send one digest containing only newly discovered opportunities after each scan.</p></div>
+        </div>
+        <div className="notification-settings-card">
+          <label className="notification-toggle">
+            <span><strong>Email new findings</strong><small>Previously emailed opportunities will not be sent again.</small></span>
+            <input
+              type="checkbox"
+              checked={settings.emailAlertsEnabled}
+              onChange={(event) => onChange({ ...settings, emailAlertsEnabled: event.target.checked })}
+            />
+          </label>
+          <label className="notification-email-field">
+            <span><strong>Send alerts to</strong><small>Connect a Resend API key under Settings before scanning.</small></span>
+            <input
+              type="email"
+              value={settings.alertEmail}
+              onChange={(event) => onChange({ ...settings, alertEmail: event.target.value })}
+              placeholder="team@getswaya.com"
+              disabled={!settings.emailAlertsEnabled}
+            />
+          </label>
+        </div>
       </section>
 
       <section className="settings-section">

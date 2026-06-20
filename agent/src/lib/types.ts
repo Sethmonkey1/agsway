@@ -14,6 +14,8 @@ export interface MonitorSettings {
   minScore: number;
   lookbackDays: number;
   scanCadenceHours: number;
+  emailAlertsEnabled: boolean;
+  alertEmail: string;
 }
 
 export interface SourceCandidate {
@@ -55,6 +57,11 @@ export interface ScanResponse {
     configured: boolean;
     savedCount: number;
   };
+  notification?: {
+    configured: boolean;
+    sentCount: number;
+    recipient: string;
+  };
 }
 
 export interface IntegrationConnection {
@@ -68,4 +75,5 @@ export interface IntegrationStatus {
   requiresUnlock: boolean;
   serper: IntegrationConnection;
   youtube: IntegrationConnection;
+  resend: IntegrationConnection;
 }

@@ -326,10 +326,16 @@ export default function OpportunityInbox({ initialOpportunities }: OpportunityIn
       const savedSummary = result.storage?.configured
         ? ` · ${result.storage.savedCount} saved to cloud`
         : "";
+      const emailWarning = scanSettings.emailAlertsEnabled && result.notification && !result.notification.configured
+        ? "Findings were saved, but Resend is not connected—no email was sent"
+        : null;
+      const emailSummary = result.notification?.sentCount
+        ? ` · ${result.notification.sentCount} emailed`
+        : "";
       if (result.storage) setDatabaseConfigured(result.storage.configured);
       setToast(result.mode === "not_configured"
         ? result.notes[0] || "Connect an API source before scanning"
-        : warning || storageWarning || `Live scan complete · ${sourceSummary}${savedSummary}`);
+        : warning || storageWarning || emailWarning || `Live scan complete · ${sourceSummary}${savedSummary}${emailSummary}`);
     } catch {
       setToast("Scan could not finish—check the server log");
     } finally {

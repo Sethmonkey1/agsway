@@ -8,6 +8,7 @@ import {
   KeyRound,
   LoaderCircle,
   LockKeyhole,
+  Mail,
   MessageCircle,
   Save,
   ShieldCheck,
@@ -24,7 +25,7 @@ interface IntegrationSettingsPanelProps {
   onToast: (message: string) => void;
 }
 
-type IntegrationName = "serper" | "youtube";
+type IntegrationName = "serper" | "youtube" | "resend";
 
 const integrations = {
   serper: {
@@ -45,6 +46,15 @@ const integrations = {
     helpUrl: "https://console.cloud.google.com/apis/credentials",
     icon: Video,
   },
+  resend: {
+    name: "Resend",
+    eyebrow: "Email notifications",
+    description: "Sends one digest containing newly discovered opportunities after each scan.",
+    env: "RESEND_API_KEY",
+    placeholder: "Paste your Resend API key",
+    helpUrl: "https://resend.com/api-keys",
+    icon: Mail,
+  },
 } as const;
 
 export default function IntegrationSettingsPanel({
@@ -53,13 +63,13 @@ export default function IntegrationSettingsPanel({
   onStatusChange,
   onToast,
 }: IntegrationSettingsPanelProps) {
-  const [values, setValues] = useState<Record<IntegrationName, string>>({ serper: "", youtube: "" });
-  const [visible, setVisible] = useState<Record<IntegrationName, boolean>>({ serper: false, youtube: false });
+  const [values, setValues] = useState<Record<IntegrationName, string>>({ serper: "", youtube: "", resend: "" });
+  const [visible, setVisible] = useState<Record<IntegrationName, boolean>>({ serper: false, youtube: false, resend: false });
   const [isSaving, setIsSaving] = useState(false);
   const [confirming, setConfirming] = useState<IntegrationName | null>(null);
   const [adminKey, setAdminKey] = useState("");
   const [unlocked, setUnlocked] = useState(false);
-  const hasChanges = Boolean(values.serper.trim() || values.youtube.trim());
+  const hasChanges = Boolean(values.serper.trim() || values.youtube.trim() || values.resend.trim());
   const hostedLocked = Boolean(status?.requiresUnlock && !unlocked);
 
   async function postIntegrations(payload: Record<string, unknown>) {
@@ -97,9 +107,10 @@ export default function IntegrationSettingsPanel({
       const next = await postIntegrations({
         ...(values.serper.trim() ? { serper: values.serper } : {}),
         ...(values.youtube.trim() ? { youtube: values.youtube } : {}),
+        ...(values.resend.trim() ? { resend: values.resend } : {}),
       });
-      setValues({ serper: "", youtube: "" });
-      setVisible({ serper: false, youtube: false });
+      setValues({ serper: "", youtube: "", resend: "" });
+      setVisible({ serper: false, youtube: false, resend: false });
       onStatusChange(next);
       onToast("API connections saved securely");
     } catch (error) {

@@ -79,6 +79,7 @@ async function ensureSchema() {
       `;
       await sql`create index if not exists swaya_opportunities_posted_at_idx on swaya_opportunities (posted_at desc)`;
       await sql`create index if not exists swaya_opportunities_status_idx on swaya_opportunities (status)`;
+      await sql`alter table swaya_opportunities add column if not exists notified_at timestamptz`;
       await sql`
         create table if not exists swaya_integration_secrets (
           name text primary key,
@@ -225,7 +226,7 @@ export async function updateStoredOpportunity(
   return true;
 }
 
-type HostedIntegrationName = "serper" | "youtube";
+type HostedIntegrationName = "serper" | "youtube" | "resend";
 type HostedIntegrationSecrets = Partial<Record<HostedIntegrationName, string>>;
 
 function encryptionKey() {
@@ -261,7 +262,7 @@ export async function loadHostedIntegrationSecrets(): Promise<HostedIntegrationS
   if (!canManageHostedSecrets()) return {};
   await ensureSchema();
   const rows = await getClient()<{ name: HostedIntegrationName; encrypted_value: string }[]>`
-    select name, encrypted_value from swaya_integration_secrets where name in ('serper', 'youtube')
+    select name, encrypted_value from swaya_integration_secrets where name in ('serper', 'youtube', 'resend')
   `;
   const result: HostedIntegrationSecrets = {};
   for (const row of rows) {
@@ -288,7 +289,7 @@ export async function updateHostedIntegrationSecrets(
     for (const name of clear) {
       await transaction`delete from swaya_integration_secrets where name = ${name}`;
     }
-    for (const name of ["serper", "youtube"] as HostedIntegrationName[]) {
+    for (const name of ["serper", "youtube", "resend"] as HostedIntegrationName[]) {
       const value = updates[name];
       if (!value) continue;
       await transaction`
@@ -298,4 +299,30 @@ export async function updateHostedIntegrationSecrets(
       `;
     }
   });
+}
+
+export async function loadUnnotifiedOpportunities(candidateIds: string[]) {
+  if (!isDatabaseConfigured() || candidateIds.length === 0) return [] as Opportunity[];
+  await ensureSchema();
+  const rows = await getClient()<OpportunityRow[]>`
+    select id, source, audience, community, author, title, excerpt, url, posted_at, score, intent, tags, reasoning, draft, status
+    from swaya_opportunities
+    where notified_at is null
+    order by discovered_at desc
+    limit 250
+  `;
+  const candidates = new Set(candidateIds);
+  return rows.filter((row) => candidates.has(row.id)).map(rowToOpportunity);
+}
+
+export async function markOpportunitiesNotified(ids: string[]) {
+  if (!isDatabaseConfigured() || ids.length === 0) return false;
+  await ensureSchema();
+  const sql = getClient();
+  await sql.begin(async (transaction) => {
+    for (const id of ids) {
+      await transaction`update swaya_opportunities set notified_at = now() where id = ${id}`;
+    }
+  });
+  return true;
 }
